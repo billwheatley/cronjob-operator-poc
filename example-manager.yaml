@@ -1,0 +1,81 @@
+apiVersion: mygroup.example.com/v1
+kind: CronJobManager
+metadata:
+  name: my-cron-set
+  namespace: my-operator-system
+spec:
+  # This is the global kill switch
+  globalSuspend: false
+
+  # This is the list of cronjobs to manage
+  jobs:
+    - name: "job-1-ns-a"
+      namespace: "target-ns-a"
+      schedule: "*/6 * * * *"
+      jobTemplate:
+        spec:
+          backoffLimit: 1
+          template:
+            spec:
+              containers:
+                - name: "sleeper"
+                  image: "busybox"
+                  command: ["/bin/sh", "-c", "echo 'Job 1 (ns-a) running for 2 minutes...'; sleep 120; echo 'Job 1 done.'"]
+              restartPolicy: "Never"
+
+    - name: "job-2-ns-a"
+      namespace: "target-ns-a"
+      schedule: "*/7 * * * *"
+      jobTemplate:
+        spec:
+          backoffLimit: 1
+          template:
+            spec:
+              containers:
+                - name: "sleeper"
+                  image: "busybox"
+                  command: ["/bin/sh", "-c", "echo 'Job 2 (ns-a) running for 3 minutes...'; sleep 180; echo 'Job 2 done.'"]
+              restartPolicy: "Never"
+
+    - name: "job-3-ns-b"
+      namespace: "target-ns-b"
+      schedule: "*/8 * * * *"
+      jobTemplate:
+        spec:
+          backoffLimit: 1
+          template:
+            spec:
+              containers:
+                - name: "sleeper"
+                  image: "busybox"
+                  command: ["/bin/sh", "-c", "echo 'Job 3 (ns-b) running for 4 minutes...'; sleep 240; echo 'Job 3 done.'"]
+              restartPolicy: "Never"
+
+    - name: "job-4-ns-b"
+      namespace: "target-ns-b"
+      schedule: "*/9 * * * *"
+      jobTemplate:
+        spec:
+          backoffLimit: 1
+          template:
+            spec:
+              containers:
+                - name: "sleeper"
+                  image: "busybox"
+                  command: ["/bin/sh", "-c", "echo 'Job 4 (ns-b) running for 5 minutes...'; sleep 300; echo 'Job 4 done.'"]
+              restartPolicy: "Never"
+
+    - name: "job-5-ns-a"
+      namespace: "target-ns-a"
+      schedule: "*/10 * * * *"
+      jobTemplate:
+        spec:
+          backoffLimit: 1
+          template:
+            spec:
+              containers:
+                - name: "sleeper"
+                  image: "busybox"
+                  command: ["/bin/sh", "-c", "echo 'Job 5 (ns-a) running for 2 minutes...'; sleep 120; echo 'Job 5 done.'"]
+              restartPolicy: "Never"
+

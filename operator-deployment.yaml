@@ -1,0 +1,111 @@
+# Note: The 'my-operator-system' namespace must be created FIRST.
+# (See README: `oc create namespace my-operator-system`)
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: my-cron-operator-sa
+  namespace: my-operator-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: my-cron-operator-role
+rules:
+  # 1. Permissions for our CRD (CronJobManager)
+  - apiGroups: ["mygroup.example.com"]
+    resources: ["cronjobmanagers"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+
+  # 2. Permissions for the CRD's 'status' sub-resource
+  - apiGroups: ["mygroup.example.com"]
+    resources: ["cronjobmanagers/status"]
+    verbs: ["get", "patch", "update"]
+
+  # 3. *** ADDED *** Permissions for the CRD's 'finalizers' sub-resource
+  # This is required for kopf.adopt() to work, as it needs to
+  # add finalizers to the parent (CronJobManager) to manage ownership.
+  - apiGroups: ["mygroup.example.com"]
+    resources: ["cronjobmanagers/finalizers"]
+    verbs: ["patch", "update"]
+
+  # 4. Permissions for the resources we manage (CronJobs)
+  - apiGroups: ["batch"]
+    resources: ["cronjobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # 5. Permissions for kopf leader election
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # 6. Permissions to create events
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: my-cron-operator-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: my-cron-operator-role
+subjects:
+  - kind: ServiceAccount
+    name: my-cron-operator-sa
+    namespace: my-operator-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-cron-operator
+  namespace: my-operator-system
+  labels:
+    app: my-cron-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-cron-operator
+  template:
+    metadata:
+      labels:
+        app: my-cron-operator
+    spec:
+      serviceAccountName: my-cron-operator-sa
+      containers:
+        - name: operator
+          # IMPORTANT: This must match the image path you built and pushed
+          image: image-registry.openshift-image-registry.svc:5000/my-operator-system/my-cron-operator:latest
+          imagePullPolicy: Always
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: my-cron-operator-scc-role
+rules:
+- apiGroups:
+  - security.openshift.io
+  resources:
+  - securitycontextconstraints
+  resourceNames:
+  - restricted-v2
+  verbs:
+  - use
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: my-cron-operator-scc-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: my-cron-operator-scc-role
+subjects:
+- kind: ServiceAccount
+  name: my-cron-operator-sa
+  namespace: my-operator-system
+
+
