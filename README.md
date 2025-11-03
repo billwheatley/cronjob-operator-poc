@@ -126,7 +126,7 @@ With the operator running, you can now create a CronJobManager resource. The ope
 
 ## How to Use the "Kill Switch"
 
-To stop all jobs, you just patch the `CronJobManager` resource.
+To stop all cronjobs (ie: future executions), you just patch the `CronJobManager` resource.
 
 ### To DISABLE (suspend) all jobs:
 
