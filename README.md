@@ -1,8 +1,8 @@
-# **Python OpenShift CronJob Operator**
+# Python OpenShift CronJob Operator
 
 This project is a simple OpenShift/Kubernetes operator built with Python and the kopf framework. It manages a set of CronJob resources across multiple namespaces, based on a single CronJobManager custom resource.
 
-## **Features**
+## Features
 
 * Manages multiple CronJob resources from a single manifest.  
 * Deploys CronJobs to different target namespaces.  
@@ -10,7 +10,7 @@ This project is a simple OpenShift/Kubernetes operator built with Python and the
   * NOTE: If there is a Job running when the kill switch is thrown to ON, it will not be stopped by this process.
 * Automatically cleans up CronJobs that are removed from the CronJobManager spec.
 
-## **Prerequisites**
+## Prerequisites
 
 * Kubernetes cluster, this was tested against Openshift (ROSA) v4.18
 * `oc` CLI connected to an OpenShift cluster with cluster-admin privileges.  
@@ -22,9 +22,25 @@ This project is a simple OpenShift/Kubernetes operator built with Python and the
     pip install kopf==1.35.4 kubernetes==28.1.0
     ```
 
-## **Step-by-Step Deployment Guide**
+* Ensure your OCP registry is exposed
 
-### **1\. Set Up Your Project**
+  1. See if the default route is established (returns a URL if successful)
+
+        ```console
+        oc get route default-route -n openshift-image-registry -o jsonpath='{.spec.host}'
+        ```
+
+  1. If no URL is returned expose the registry
+
+        ```console
+        oc patch configs.imageregistry.operator.openshift.io/cluster --patch '{"spec":{"defaultRoute":true}}' --type=merge
+        ```
+
+        Test with prior command
+
+## Step-by-Step Deployment Guide
+
+### 1\. Set Up Your Project
 
 Pull down from Github
 
@@ -32,7 +48,7 @@ Pull down from Github
 git clone git@github.com:billwheatley/cronjob-operator-poc.git
 ```
 
-### **2\. Create Namespaces**
+### 2\. Create Namespaces
 
 The operator will live in its own namespace (my-operator-system), and the example cronjobs will be deployed to two other namespaces (target-ns-a and target-ns-b).
 
@@ -44,31 +60,13 @@ oc create namespace target-ns-a
 oc create namespace target-ns-b
 ```
 
-### **3\. Build and Push the Operator Image**
-
-#### Pre-Req Ensure your OCP registry is exposed
-
-1. See if this returns a URL
-
-    ```console
-    oc get route default-route -n openshift-image-registry -o jsonpath='{.spec.host}'
-    ```
-
-1. If not expose the registry
-
-    ```console
-    oc patch configs.imageregistry.operator.openshift.io/cluster --patch '{"spec":{"defaultRoute":true}}' --type=merge
-    ```
-
-    Test with prior command
-
-#### Build Deploy Procedure
+### 3\. Build and Push the Operator Image
 
 ```console
 ./build-deploy.sh
 ```
 
-### **4\. Deploy the Operator**
+### 4\. Deploy the Operator
 
 1. Apply the Custom Resource Definition (CRD)  
 This tells the cluster about our new 'CronJobManager' resource type.
@@ -98,7 +96,7 @@ This starts the operator pod.
     oc logs -n my-operator-system -l app=my-cron-operator -f
     ```
 
-### **5\. Use the Operator: Deploy CronJobs**
+### 5\. Use the Operator: Deploy CronJobs
 
 With the operator running, you can now create a CronJobManager resource. The operator will see this and immediately create the CronJobs you've defined.
 
@@ -126,11 +124,11 @@ With the operator running, you can now create a CronJobManager resource. The ope
 
     You should see the jobs listed, with their correct schedules and SUSPEND set to False.
 
-## **How to Use the "Kill Switch"**
+## How to Use the "Kill Switch"
 
 To stop all jobs, you just patch the `CronJobManager` resource.
 
-### **To DISABLE (suspend) all jobs:**
+### To DISABLE (suspend) all jobs:
 
 ```console
 oc patch cronjobmanager my-cron-set \  
@@ -148,7 +146,7 @@ oc get cronjobs -n target-ns-a
 oc get cronjobs -n target-ns-b
 ```
 
-### **To RE-ENABLE all jobs:**
+### To RE-ENABLE all jobs:
 
 ```console
 oc patch cronjobmanager my-cron-set \
@@ -159,7 +157,7 @@ oc patch cronjobmanager my-cron-set \
 
 The operator will again detect this and update all CronJobs to set suspend: false.
 
-## **Cleanup**
+## Cleanup
 
 To remove everything you've deployed:
 
@@ -180,4 +178,13 @@ Useful for certain deployment changes that don't get picked up
 
 ```console
 oc delete pod -n my-operator-system -l app=my-cron-operator
+```
+
+### Checking Events in the target namespaces
+
+Useful if CornJobs are not showing up after operator deploy
+
+```console
+oc get events -n target-ns-a |less
+oc get events -n target-ns-b |less
 ```
